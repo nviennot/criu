@@ -222,6 +222,7 @@ TST_NOFILE	:=				\
 		child_subreaper_and_reparent	\
 		memfd00				\
 		memfd01				\
+		memfd02				\
 #		jobctl00			\
 
 ifneq ($(ARCH),arm)
