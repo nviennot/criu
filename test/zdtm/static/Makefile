@@ -223,6 +223,7 @@ TST_NOFILE	:=				\
 		memfd00				\
 		memfd01				\
 		memfd02				\
+		memfd03				\
 #		jobctl00			\
 
 ifneq ($(ARCH),arm)
