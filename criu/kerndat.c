@@ -1078,10 +1078,6 @@ int kerndat_init(void)
 	if (!ret)
 		ret = kerndat_vdso_preserves_hint();
 	if (!ret)
-		ret = kerndat_socket_netns();
-	if (!ret)
-		ret = kerndat_nsid();
-	if (!ret)
 		ret = kerndat_x86_has_ptrace_fpu_xsave_bug();
 	if (!ret)
 		ret = kerndat_has_inotify_setnextwd();
