@@ -1,31 +1,10 @@
 import os
 import ctypes
-import subprocess
 libc = ctypes.CDLL(None)
 
 
-# The SYS_memfd_create value depends on the architecture.
-# We don't have a good way to get the system call number.
-# Here, we invoke gcc. Oh well.
-def __get_SYS_memfd_create():
-    prog = """
-    #include <sys/syscall.h>
-    #include <stdio.h>
-    int main() {
-      printf("%d", SYS_memfd_create);
-      return 0;
-    }
-    """
-    cmd = "echo '{}' | gcc -x c - -o memfd_out && ./memfd_out && rm -f ./memfd_out".format(prog)
-    out = subprocess.check_output(cmd, shell=True)
-    return int(out)
-
-
-SYS_memfd_create = __get_SYS_memfd_create()
-
-
 def memfd_create(name, flags):
-    return libc.syscall(SYS_memfd_create, name.encode('utf8'), flags)
+    return libc.memfd_create(name.encode('utf8'), flags)
 
 
 def create_fds():
