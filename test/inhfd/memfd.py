@@ -1,5 +1,6 @@
 import os
 import ctypes
+import random
 libc = ctypes.CDLL(None)
 
 
@@ -8,6 +9,8 @@ def memfd_create(name, flags):
 
 
 def create_fds():
+    idx = random.randint(0, 1024)
+
     def create_memfd_pair(name):
         fd = memfd_create(name, 0)
         fw = open('/proc/self/fd/{}'.format(fd), 'wb')
@@ -15,7 +18,7 @@ def create_fds():
         os.close(fd)
         return (fw, fr)
 
-    return [create_memfd_pair("name{}".format(i)) for i in range(10)]
+    return [create_memfd_pair("name{}".format(i + idx)) for i in range(10)]
 
 
 def filename(f):
