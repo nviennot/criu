@@ -1,0 +1,6 @@
+#!/usr/bin/env python
+
+import ctypes
+libc = ctypes.CDLL(None)
+
+libc.memfd_create("test".encode('utf8'), 0)
