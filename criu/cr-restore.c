@@ -236,6 +236,9 @@ static int crtools_prepare_shared(void)
 	if (prepare_files())
 		return -1;
 
+	if (prepare_memfd_inodes())
+		return -1;
+
 	/* We might want to remove ghost files on failed restore */
 	if (collect_remaps_and_regfiles())
 		return -1;
