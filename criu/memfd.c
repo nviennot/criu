@@ -43,9 +43,10 @@ struct memfd_inode {
 		};
 		/* Only for restore */
 		struct {
-			mutex_t	lock;
-			int	fdstore_id;
-			unsigned int pending_seals;
+			MemfdInodeEntry	*mie;
+			mutex_t		lock;
+			int		fdstore_id;
+			unsigned int	pending_seals;
 		};
 	};
 };
@@ -206,41 +207,18 @@ struct memfd_info {
 	struct memfd_inode	*inode;
 };
 
-static struct memfd_inode *memfd_alloc_inode(int id)
+static int collect_one_memfd_inode(void *o, ProtobufCMessage *base, struct cr_img *i)
 {
-	struct memfd_inode *inode;
+	MemfdInodeEntry *mie = pb_msg(base, MemfdInodeEntry);
+	struct memfd_inode *inode = o;
 
-	list_for_each_entry(inode, &memfd_inodes, list)
-		if (inode->id == id)
-			return inode;
-
-	inode = shmalloc(sizeof(*inode));
-	if (!inode)
-		return NULL;
-
-	inode->id = id;
+	inode->id = mie->inode_id;
+	inode->mie = mie;
 	mutex_init(&inode->lock);
 	inode->fdstore_id = -1;
 	inode->pending_seals = 0;
 
 	list_add_tail(&inode->list, &memfd_inodes);
-	return inode;
-}
-
-static LIST_HEAD(inode_list);
-struct memfd_inode_node {
-	MemfdInodeEntry *mie;
-	struct list_head node;
-};
-
-static int collect_one_memfd_inode(void *o, ProtobufCMessage *base, struct cr_img *i)
-{
-	MemfdInodeEntry *mie = pb_msg(base, MemfdInodeEntry);
-	struct memfd_inode_node *n = o;
-
-	n->mie = mie;
-
-	list_add_tail(&n->node, &inode_list);
 
 	return 0;
 }
@@ -248,9 +226,14 @@ static int collect_one_memfd_inode(void *o, ProtobufCMessage *base, struct cr_im
 static struct collect_image_info memfd_inode_cinfo = {
 	.fd_type = CR_FD_MEMFD_INODE,
 	.pb_type = PB_MEMFD_INODE,
-	.priv_size = sizeof(struct memfd_inode_node),
+	.priv_size = sizeof(struct memfd_inode),
 	.collect = collect_one_memfd_inode,
-	.flags = COLLECT_NOFREE,
+	/*
+	 * COLLECT_SHARED because we share the fdstore variable among processes.
+	 * COLLECT_NOFREE because it's not worth spending the CPU cycles to
+	 * free memory just before we die.
+	 */
+	.flags = COLLECT_SHARED | COLLECT_NOFREE,
 };
 
 int prepare_memfd_inodes(void)
@@ -258,13 +241,13 @@ int prepare_memfd_inodes(void)
 	return collect_image(&memfd_inode_cinfo);
 }
 
-static MemfdInodeEntry *lookup_memfd_inode(u64 id)
+struct memfd_inode *lookup_memfd_inode(u64 id)
 {
-	struct memfd_inode_node *n;
+	struct memfd_inode *inode;
 
-	list_for_each_entry(n, &inode_list, node) {
-		if (n->mie->inode_id == id)
-			return n->mie;
+	list_for_each_entry(inode, &memfd_inodes, list) {
+		if (inode->id == id)
+			return inode;
 	}
 	pr_err("Unable to find the %"PRIu64" memfd inode\n", id);
 	return NULL;
@@ -272,14 +255,10 @@ static MemfdInodeEntry *lookup_memfd_inode(u64 id)
 
 static int memfd_open_inode_nocache(struct memfd_inode *inode)
 {
-	MemfdInodeEntry *mie = NULL;
+	MemfdInodeEntry *mie = inode->mie;
 	int fd = -1;
 	int ret = -1;
 	int flags;
-
-	mie = lookup_memfd_inode(inode->id);
-	if (mie == NULL)
-		goto out;
 
 	if (mie->seals == F_SEAL_SEAL) {
 		inode->pending_seals = 0;
@@ -398,17 +377,10 @@ static int memfd_open_fe_fd(struct file_desc *fd, int *new_fd)
 
 static char *memfd_d_name(struct file_desc *d, char *buf, size_t s)
 {
-	MemfdInodeEntry *mie = NULL;
-	struct memfd_info *mfi;
+	struct memfd_info *mfi = container_of(d, struct memfd_info, d);
 
-	mfi = container_of(d, struct memfd_info, d);
-
-	mie = lookup_memfd_inode(mfi->inode->id);
-	if (mie == NULL)
-		return NULL;
-
-	if (snprintf(buf, s, "%s%s", MEMFD_PREFIX, mie->name) >= s) {
-		pr_err("Buffer too small for memfd name %s\n", mie->name);
+	if (snprintf(buf, s, "%s%s", MEMFD_PREFIX, mfi->inode->mie->name) >= s) {
+		pr_err("Buffer too small for memfd name %s\n", mfi->inode->mie->name);
 		return NULL;
 	}
 
@@ -426,7 +398,7 @@ static int collect_one_memfd(void *o, ProtobufCMessage *msg, struct cr_img *i)
 	struct memfd_info *info = o;
 
 	info->mfe = pb_msg(msg, MemfdFileEntry);
-	info->inode = memfd_alloc_inode(info->mfe->inode_id);
+	info->inode = lookup_memfd_inode(info->mfe->inode_id);
 	if (!info->inode)
 		return -1;
 
