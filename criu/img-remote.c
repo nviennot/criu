@@ -950,7 +950,7 @@ int read_remote_image_connection(char *snapshot_id, char *path)
 		return -1;
 	}
 
-	if (!error || (snapshot_id[0] == NULL_SNAPSHOT_ID && path[0] != FINISH))
+	if (!error)
 		return sockfd;
 
 	if (error == ENOENT) {
