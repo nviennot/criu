@@ -46,7 +46,6 @@
 
 #include "setproctitle.h"
 #include "sysctl.h"
-#include "img-remote.h"
 
 void flush_early_log_to_stderr(void) __attribute__((destructor));
 
@@ -247,22 +246,6 @@ int main(int argc, char *argv[], char *envp[])
 	if (!strcmp(argv[optind], "page-server"))
 		return cr_page_server(opts.daemon_mode, false, -1) != 0;
 
-	if (!strcmp(argv[optind], "image-cache")) {
-		if (!opts.port)
-			goto opt_port_missing;
-		return image_cache(opts.daemon_mode, DEFAULT_CACHE_SOCKET);
-	}
-
-	if (!strcmp(argv[optind], "image-proxy")) {
-		if (!opts.addr) {
-			pr_err("address not specified\n");
-			return 1;
-		}
-		if (!opts.port)
-			goto opt_port_missing;
-		return image_proxy(opts.daemon_mode, DEFAULT_PROXY_SOCKET);
-	}
-
 	if (!strcmp(argv[optind], "service"))
 		return cr_service(opts.daemon_mode);
 
@@ -302,8 +285,6 @@ usage:
 "  criu service [<options>]\n"
 "  criu dedup\n"
 "  criu lazy-pages -D DIR [<options>]\n"
-"  criu image-cache [<options>]\n"
-"  criu image-proxy [<options>]\n"
 "\n"
 "Commands:\n"
 "  dump           checkpoint a process/tree identified by pid\n"
@@ -315,8 +296,6 @@ usage:
 "  dedup          remove duplicates in memory dump\n"
 "  cpuinfo dump   writes cpu information into image file\n"
 "  cpuinfo check  validates cpu information read from image file\n"
-"  image-proxy    launch dump-side proxy to sent images\n"
-"  image-cache    launch restore-side cache to receive images\n"
 	);
 
 	if (usage_error) {
@@ -369,8 +348,8 @@ usage:
 "                            macvlan[IFNAME]:OUTNAME\n"
 "                            mnt[COOKIE]:ROOT\n"
 "\n"
-"  --remote              dump/restore images directly to/from remote node using\n"
-"                        image-proxy/image-cache\n"
+"  --remote              dump/restore images using an image proxy such as\n"
+"                        criu-image-streamer\n"
 "* Special resources support:\n"
 "     --" SK_EST_PARAM "  checkpoint/restore established TCP connections\n"
 "     --" SK_INFLIGHT_PARAM "   skip (ignore) in-flight TCP connections\n"
@@ -492,10 +471,6 @@ usage:
 	);
 
 	return 0;
-
-opt_port_missing:
-	pr_err("port not specified\n");
-	return 1;
 
 opt_pid_missing:
 	pr_err("pid not specified\n");
