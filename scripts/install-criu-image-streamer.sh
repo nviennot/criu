@@ -11,4 +11,4 @@ git clone https://github.com/checkpoint-restore/criu-image-streamer.git -b dev
 
 # Compile
 cd criu-image-streamer
-make BUILD=debug # debug build compiles faster than release mode (130s vs 230s of CPU time)
+make BUILD=debug # debug build compiles faster than release mode (2x faster)
