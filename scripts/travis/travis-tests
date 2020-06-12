@@ -81,8 +81,6 @@ time make CC="$CC" -j4
 # hence the exit 0.
 if [ "${STREAM_TEST}" = "1" ]; then
 	./scripts/install-criu-image-streamer.sh
-  curl -L https://github.com/tmate-io/tmate/releases/download/2.4.0/tmate-2.4.0-static-linux-amd64.tar.xz | tar xJf -
-  tmate-2.4.0-static-linux-amd64/tmate -F
 	test_stream
 	exit 0
 fi

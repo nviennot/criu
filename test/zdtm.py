@@ -1434,8 +1434,7 @@ class criu:
     def check(feature):
         if feature == 'stream':
             try:
-                p = subprocess.Popen(["criu-image-streamer", "--version"],
-                                     stdout=subprocess.DEVNULL)
+                p = subprocess.Popen(["criu-image-streamer", "--version"])
                 return p.wait() == 0
             except Exception:
                 return False
