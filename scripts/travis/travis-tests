@@ -80,7 +80,7 @@ time make CC="$CC" -j4
 # We run streaming tests separately to improve test completion times,
 # hence the exit 0.
 if [ "${STREAM_TEST}" = "1" ]; then
-	./install-criu-image-streamer.sh
+	./scripts/install-criu-image-streamer.sh
 	test_stream
 	exit 0
 fi
